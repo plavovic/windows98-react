@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import Draggable from 'react-draggable';
 import { Volume2, Shield, Monitor, Music, Folder, Globe, Trash2 } from 'lucide-react';
 import { Window } from './components/Window';
@@ -15,6 +15,7 @@ export default function App() {
   const [startOpen, setStartOpen] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
   const [time, setTime] = useState('');
+  const iconRefs = useRef<Record<string, { current: HTMLDivElement | null }>>({});
 
   // 1. STATE FOR OPEN WINDOWS & Z-INDEX LAYERING
   const [openWindows, setOpenWindows] = useState<Record<string, boolean>>({
@@ -65,14 +66,21 @@ export default function App() {
       }}
     >
       {/* DESKTOP CANVAS */}
-      <div className="w-full h-[calc(100vh-28px)] p-4 flex flex-col flex-wrap gap-6 items-start justify-start">
-        {INITIAL_ICONS.map((item) => {
+      <div className="relative w-full h-[calc(100vh-28px)] p-4">
+        {INITIAL_ICONS.map((item, index) => {
           const IconComponent = item.icon;
           const isSelected = selectedIcon === item.id;
+          const iconRef = (iconRefs.current[item.id] ??= { current: null });
 
           return (
-            <Draggable key={item.id} bounds="parent">
+            <Draggable
+              key={item.id}
+              bounds="parent"
+              defaultPosition={{ x: 0, y: index * 96 }}
+              nodeRef={iconRef}
+            >
               <div
+                ref={iconRef}
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedIcon(item.id);

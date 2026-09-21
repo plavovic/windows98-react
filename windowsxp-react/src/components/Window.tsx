@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { useRef, type ReactNode } from 'react';
 import Draggable from 'react-draggable';
 import { X, Minus, Square } from 'lucide-react';
 
@@ -22,11 +22,14 @@ export const Window: React.FC<WindowProps> = ({
   onFocus,
   children,
 }) => {
+  const windowRef = useRef<HTMLDivElement>(null);
+
   if (!isOpen) return null; // Don't render if closed
 
   return (
-    <Draggable handle=".window-header" bounds="parent">
+    <Draggable handle=".window-header" bounds="parent" nodeRef={windowRef}>
       <div
+        ref={windowRef}
         onClick={onFocus}
         style={{ zIndex }}
         className="absolute top-12 left-12 w-96 bg-[#c0c0c0] win-border-outset shadow-xl flex flex-col select-none"
