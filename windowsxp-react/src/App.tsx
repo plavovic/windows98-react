@@ -1,15 +1,23 @@
 import { useRef, useState, useEffect } from 'react';
 import Draggable from 'react-draggable';
-import { Volume2, Shield, Monitor, Music, Folder, Globe, Trash2 } from 'lucide-react';
+import { Volume2, Shield } from 'lucide-react';
 import { Window } from './components/Window';
+import computerIcon from './assets/mypcpng.png';
+import spotifyIcon from './assets/spotifypng.png';
+import documentsIcon from './assets/documentspng.png';
+import browserIcon from './assets/internetexplorerpng.webp';
+import recycleBinIcon from './assets/recyclebin.png';
 
 const INITIAL_ICONS = [
-  { id: 'computer', label: 'My Computer', icon: Monitor },
-  { id: 'spotify', label: 'Spotify 98', icon: Music },
-  { id: 'documents', label: 'My Documents', icon: Folder },
-  { id: 'browser', label: 'Internet Explorer', icon: Globe },
-  { id: 'trash', label: 'Recycle Bin', icon: Trash2 },
+  { id: 'computer', label: 'My Computer', icon: computerIcon },
+  { id: 'spotify', label: 'Spotify 98', icon: spotifyIcon },
+  { id: 'documents', label: 'My Documents', icon: documentsIcon },
+  { id: 'browser', label: 'Internet Explorer', icon: browserIcon },
+  { id: 'trash', label: 'Recycle Bin', icon: recycleBinIcon },
 ];
+
+
+
 
 export default function App() {
   const [startOpen, setStartOpen] = useState(false);
@@ -17,7 +25,7 @@ export default function App() {
   const [time, setTime] = useState('');
   const iconRefs = useRef<Record<string, { current: HTMLDivElement | null }>>({});
 
-  // 1. STATE FOR OPEN WINDOWS & Z-INDEX LAYERING
+
   const [openWindows, setOpenWindows] = useState<Record<string, boolean>>({
     spotify: false,
     computer: false,
@@ -30,7 +38,7 @@ export default function App() {
 
   const [highestZIndex, setHighestZIndex] = useState(10);
 
-  // System Clock
+
   useEffect(() => {
     const updateTime = () => {
       setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -40,7 +48,7 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // 2. WINDOW MANAGEMENT METHODS
+
   const openWindow = (id: string) => {
     focusWindow(id);
     setOpenWindows((prev) => ({ ...prev, [id]: true }));
@@ -65,10 +73,9 @@ export default function App() {
         setSelectedIcon(null);
       }}
     >
-      {/* DESKTOP CANVAS */}
+  
       <div className="relative w-full h-[calc(100vh-28px)] p-4">
         {INITIAL_ICONS.map((item, index) => {
-          const IconComponent = item.icon;
           const isSelected = selectedIcon === item.id;
           const iconRef = (iconRefs.current[item.id] ??= { current: null });
 
@@ -93,7 +100,7 @@ export default function App() {
                     isSelected ? 'bg-[#000080]/40 border border-dotted border-white' : ''
                   }`}
                 >
-                  <IconComponent className="w-8 h-8 text-white drop-shadow-[1px_1px_0px_rgba(0,0,0,1)]" />
+                  <img src={item.icon} alt="" className="w-8 h-8 object-contain image-render-pixelated" />
                 </div>
                 <span
                   className={`text-xs text-white text-center px-1 leading-tight ${
@@ -107,11 +114,11 @@ export default function App() {
           );
         })}
 
-        {/* WINDOW 1: MY COMPUTER */}
+  
         <Window
           id="computer"
           title="My Computer"
-          icon={<Monitor className="w-3.5 h-3.5" />}
+          icon={<img src={computerIcon} alt="" className="w-3.5 h-3.5 object-contain image-render-pixelated" />}
           isOpen={openWindows.computer}
           zIndex={windowZIndices.computer}
           onClose={() => closeWindow('computer')}
@@ -129,11 +136,11 @@ export default function App() {
           </div>
         </Window>
 
-        {/* WINDOW 2: SPOTIFY 98 */}
+  
         <Window
           id="spotify"
           title="Spotify Webamp 98"
-          icon={<Music className="w-3.5 h-3.5" />}
+          icon={<img src={spotifyIcon} alt="" className="w-3.5 h-3.5 object-contain image-render-pixelated" />}
           isOpen={openWindows.spotify}
           zIndex={windowZIndices.spotify}
           onClose={() => closeWindow('spotify')}
@@ -153,7 +160,7 @@ export default function App() {
         </Window>
       </div>
 
-      {/* START MENU POPUP */}
+
       {startOpen && (
         <div
           className="absolute bottom-7 left-0 w-52 bg-[#c0c0c0] win-border-outset z-50 flex shadow-lg"
@@ -198,13 +205,13 @@ export default function App() {
             <span>🪟</span> Start
           </button>
 
-          {/* Dynamic Taskbar Tabs */}
           {openWindows.spotify && (
             <button
               onClick={() => focusWindow('spotify')}
               className="px-2 py-0.5 text-xs bg-[#c0c0c0] win-border-inset flex items-center gap-1 w-28 truncate"
             >
-              🎵 Spotify 98
+              <img src={spotifyIcon} alt="" className="w-3.5 h-3.5 object-contain image-render-pixelated" />
+              Spotify 98
             </button>
           )}
           {openWindows.computer && (
@@ -212,7 +219,8 @@ export default function App() {
               onClick={() => focusWindow('computer')}
               className="px-2 py-0.5 text-xs bg-[#c0c0c0] win-border-inset flex items-center gap-1 w-28 truncate"
             >
-              💻 My Computer
+              <img src={computerIcon} alt="" className="w-3.5 h-3.5 object-contain image-render-pixelated" />
+              My Computer
             </button>
           )}
         </div>
