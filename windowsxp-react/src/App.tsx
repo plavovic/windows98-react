@@ -8,8 +8,23 @@ import documentsIcon from './assets/documentspng.png';
 import browserIcon from './assets/internetexplorerpng.webp';
 import recycleBinIcon from './assets/recyclebin.png';
 
+interface DesktopItem {
+  id: string;
+  label: string;
+  icon: string;
+}
+
+const ICON_MAP: Record<string, string> = {
+  computer: computerIcon,
+  spotify: spotifyIcon,
+  documents: documentsIcon,
+  browser: browserIcon,
+  trash: recycleBinIcon,
+};
+
+
 const INITIAL_ICONS = [
-  { id: 'computer', label: 'My Computer', icon: computerIcon },
+  { id: 'computer', label: 'My Computer', icon:computerIcon },
   { id: 'spotify', label: 'Spotify 98', icon: spotifyIcon },
   { id: 'documents', label: 'My Documents', icon: documentsIcon },
   { id: 'browser', label: 'Internet Explorer', icon: browserIcon },
@@ -20,6 +35,10 @@ const INITIAL_ICONS = [
 
 
 export default function App() {
+  
+  const [icons, setIcons] = useState<DesktopItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const [startOpen, setStartOpen] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
   const [time, setTime] = useState('');
@@ -39,6 +58,24 @@ export default function App() {
   const [highestZIndex, setHighestZIndex] = useState(10);
 
 
+ useEffect(() => {
+  fetch('http://localhost:8080/api/desktop/icons')
+    .then((res) => { // ✅ Added opening curly brace
+      if (!res.ok) throw new Error("Failed to fetch desktop data");
+      return res.json();
+    })
+    .then((resData) => {
+      setIcons(resData.data);
+      setLoading(false);
+    })
+    .catch((err) => {
+      console.error("Error connecting to backend:", err);
+      setLoading(false);
+    });
+}, []);
+  
+  
+  
   useEffect(() => {
     const updateTime = () => {
       setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));

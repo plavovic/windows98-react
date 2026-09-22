@@ -23,10 +23,13 @@ func main() {
 
 	r.GET("/api/desktop/icons", func(c *gin.Context) {
 		icons:= []DesktopItem{
-			{ID: "1", Label: "Icon 1", Icon: "icon1.png"},
-			{ID: "2", Label: "Icon 2", Icon: "icon2.png"},
+			{ID: "computer", Label: "Icon 1", Icon: "/icons/mypcpng.png"},
+			{ID: "spotify", Label: "Icon 2", Icon: "/icons/spotifypng.png"},
+			{ID: "documents", Label: "Icon 3", Icon: "/icons/documentspng.png"},
+			{ID: "browser", Label: "Icon 4", Icon: "/icons/internetexplorerpng.png"},
+			{ID: "trash", Label: "Icon 5", Icon: "/icons/recyclebin.png"},
 		}
-		c.JSON(http.StatusOK, gin.H
+		c.JSON(http.StatusOK, gin.H  {
 		"status": "success",
 		"data": icons,
 		})
