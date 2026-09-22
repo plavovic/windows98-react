@@ -1,4 +1,20 @@
-# React + TypeScript + Vite
+# Windows 98 React Desktop
+
+## Spotify setup
+
+1. In the Spotify Developer Dashboard, add this exact redirect URI to the app:
+
+  `http://127.0.0.1:8080/api/auth/spotify/callback`
+
+2. Copy `backend/.env.example` to `backend/.env`, replace the two placeholder credentials, and start the backend:
+
+  `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`, and `FRONTEND_URL`.
+
+  The backend loads `backend/.env` automatically. The file is ignored by Git.
+
+3. Run the backend from `backend/`, then run the frontend with `npm run dev`.
+
+The Spotify app must allow your account while it is in Development mode. Playback control also requires Spotify Premium and an active device.
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 

@@ -2,17 +2,12 @@ import { useRef, useState, useEffect } from 'react';
 import Draggable from 'react-draggable';
 import { Volume2, Shield } from 'lucide-react';
 import { Window } from './components/Window';
+
 import computerIcon from './assets/mypcpng.png';
 import spotifyIcon from './assets/spotifypng.png';
 import documentsIcon from './assets/documentspng.png';
 import browserIcon from './assets/internetexplorerpng.webp';
 import recycleBinIcon from './assets/recyclebin.png';
-
-interface DesktopItem {
-  id: string;
-  label: string;
-  icon: string;
-}
 
 const ICON_MAP: Record<string, string> = {
   computer: computerIcon,
@@ -22,28 +17,25 @@ const ICON_MAP: Record<string, string> = {
   trash: recycleBinIcon,
 };
 
-
-const INITIAL_ICONS = [
-  { id: 'computer', label: 'My Computer', icon:computerIcon },
-  { id: 'spotify', label: 'Spotify 98', icon: spotifyIcon },
-  { id: 'documents', label: 'My Documents', icon: documentsIcon },
-  { id: 'browser', label: 'Internet Explorer', icon: browserIcon },
-  { id: 'trash', label: 'Recycle Bin', icon: recycleBinIcon },
-];
-
-
-
+interface DesktopItem {
+  id: string;
+  label: string;
+  icon: string;
+}
 
 export default function App() {
-  
-  const [icons, setIcons] = useState<DesktopItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  
   const [startOpen, setStartOpen] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
   const [time, setTime] = useState('');
   const iconRefs = useRef<Record<string, { current: HTMLDivElement | null }>>({});
 
+  // 1. Desktop & Window States
+  const [icons, setIcons] = useState<DesktopItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 2. Spotify Auth State
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const [openWindows, setOpenWindows] = useState<Record<string, boolean>>({
     spotify: false,
@@ -57,25 +49,7 @@ export default function App() {
 
   const [highestZIndex, setHighestZIndex] = useState(10);
 
-
- useEffect(() => {
-  fetch('http://localhost:8080/api/desktop/icons')
-    .then((res) => { // ✅ Added opening curly brace
-      if (!res.ok) throw new Error("Failed to fetch desktop data");
-      return res.json();
-    })
-    .then((resData) => {
-      setIcons(resData.data);
-      setLoading(false);
-    })
-    .catch((err) => {
-      console.error("Error connecting to backend:", err);
-      setLoading(false);
-    });
-}, []);
-  
-  
-  
+  // Clock Timer
   useEffect(() => {
     const updateTime = () => {
       setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -85,6 +59,43 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Fetch Desktop Icons from Go Backend
+  useEffect(() => {
+    fetch('http://localhost:8080/api/desktop/icons')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch desktop icons');
+        return res.json();
+      })
+      .then((resData) => {
+        setIcons(resData.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error connecting to backend:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  // Check URL for the OAuth result after Spotify redirects back.
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const token = hashParams.get('access_token');
+    const error = urlParams.get('spotify_error');
+    const errorDescription = urlParams.get('spotify_error_description');
+
+    if (token) {
+      setAccessToken(token);
+      // Automatically open Spotify window on successful login
+      setOpenWindows((prev) => ({ ...prev, spotify: true }));
+      // Clean up the URL token from the browser bar
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (error) {
+      setAuthError(errorDescription || error);
+      setOpenWindows((prev) => ({ ...prev, spotify: true }));
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const openWindow = (id: string) => {
     focusWindow(id);
@@ -101,6 +112,18 @@ export default function App() {
     setWindowZIndices((prev) => ({ ...prev, [id]: nextZ }));
   };
 
+  // Helper function to call Spotify Web API player endpoints
+  const handlePlaybackCommand = (command: 'play' | 'pause' | 'next' | 'previous') => {
+    if (!accessToken) return;
+
+    fetch(`https://api.spotify.com/v1/me/player/${command}`, {
+      method: command === 'play' || command === 'pause' ? 'PUT' : 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }).catch((err) => console.error(`Error sending ${command} command:`, err));
+  };
+
   return (
     <div
       className="relative w-screen h-screen overflow-hidden select-none font-sans"
@@ -110,48 +133,58 @@ export default function App() {
         setSelectedIcon(null);
       }}
     >
-  
+      {/* DESKTOP CANVAS */}
       <div className="relative w-full h-[calc(100vh-28px)] p-4">
-        {INITIAL_ICONS.map((item, index) => {
-          const isSelected = selectedIcon === item.id;
-          const iconRef = (iconRefs.current[item.id] ??= { current: null });
+        {loading ? (
+          <div className="text-white text-xs font-mono">Loading Windows 98 desktop...</div>
+        ) : (
+          icons.map((item, index) => {
+            const isSelected = selectedIcon === item.id;
+            const iconRef = (iconRefs.current[item.id] ??= { current: null });
+            const currentIconSrc = ICON_MAP[item.icon] || computerIcon;
 
-          return (
-            <Draggable
-              key={item.id}
-              bounds="parent"
-              defaultPosition={{ x: 0, y: index * 96 }}
-              nodeRef={iconRef}
-            >
-              <div
-                ref={iconRef}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedIcon(item.id);
-                }}
-                onDoubleClick={() => openWindow(item.id)}
-                className="w-20 flex flex-col items-center gap-1 cursor-pointer group"
+            return (
+              <Draggable
+                key={item.id}
+                bounds="parent"
+                defaultPosition={{ x: 0, y: index * 96 }}
+                nodeRef={iconRef}
               >
                 <div
-                  className={`p-2 rounded flex items-center justify-center ${
-                    isSelected ? 'bg-[#000080]/40 border border-dotted border-white' : ''
-                  }`}
+                  ref={iconRef}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedIcon(item.id);
+                  }}
+                  onDoubleClick={() => openWindow(item.id)}
+                  className="w-20 flex flex-col items-center gap-1 cursor-pointer group"
                 >
-                  <img src={item.icon} alt="" className="w-8 h-8 object-contain image-render-pixelated" />
+                  <div
+                    className={`p-2 rounded flex items-center justify-center ${
+                      isSelected ? 'bg-[#000080]/40 border border-dotted border-white' : ''
+                    }`}
+                  >
+                    <img
+                      src={currentIconSrc}
+                      alt=""
+                      className="w-8 h-8 object-contain image-render-pixelated pointer-events-none"
+                      draggable={false}
+                    />
+                  </div>
+                  <span
+                    className={`text-xs text-white text-center px-1 leading-tight ${
+                      isSelected ? 'bg-[#000080] font-bold' : 'drop-shadow-[1px_1px_1px_rgba(0,0,0,1)]'
+                    }`}
+                  >
+                    {item.label}
+                  </span>
                 </div>
-                <span
-                  className={`text-xs text-white text-center px-1 leading-tight ${
-                    isSelected ? 'bg-[#000080] font-bold' : 'drop-shadow-[1px_1px_1px_rgba(0,0,0,1)]'
-                  }`}
-                >
-                  {item.label}
-                </span>
-              </div>
-            </Draggable>
-          );
-        })}
+              </Draggable>
+            );
+          })
+        )}
 
-  
+        {/* MY COMPUTER WINDOW */}
         <Window
           id="computer"
           title="My Computer"
@@ -164,16 +197,16 @@ export default function App() {
           <div className="bg-white p-3 win-border-inset min-h-[120px] flex gap-4">
             <div className="flex flex-col items-center gap-1 cursor-pointer">
               <span className="text-2xl">💽</span>
-              <span>Local Disk (C:)</span>
+              <span className="text-xs">Local Disk (C:)</span>
             </div>
             <div className="flex flex-col items-center gap-1 cursor-pointer">
               <span className="text-2xl">💿</span>
-              <span>CD-ROM (D:)</span>
+              <span className="text-xs">CD-ROM (D:)</span>
             </div>
           </div>
         </Window>
 
-  
+        {/* SPOTIFY WINAMP WINDOW */}
         <Window
           id="spotify"
           title="Spotify Webamp 98"
@@ -183,21 +216,73 @@ export default function App() {
           onClose={() => closeWindow('spotify')}
           onFocus={() => focusWindow('spotify')}
         >
-          <div className="bg-black text-green-400 p-3 font-mono win-border-inset flex flex-col gap-2">
+          <div className="bg-black text-green-400 p-3 font-mono win-border-inset flex flex-col gap-3 min-w-[280px]">
             <div className="text-xs font-bold text-center border-b border-green-800 pb-1">
               WINAMP / SPOTIFY PLAYER
             </div>
-            <div className="text-sm">🎵 Now Playing: Synthwave 1998</div>
-            <div className="flex justify-between items-center bg-gray-900 p-2 mt-2">
-              <button className="px-2 py-0.5 bg-gray-700 text-white win-border-outset">▶ Play</button>
-              <button className="px-2 py-0.5 bg-gray-700 text-white win-border-outset">⏸ Pause</button>
-              <button className="px-2 py-0.5 bg-gray-700 text-white win-border-outset">⏹ Stop</button>
-            </div>
+
+            {!accessToken ? (
+              /* VIEW 1: NOT LOGGED IN */
+              <div className="flex flex-col items-center gap-3 py-2">
+                {authError && <span className="text-xs text-red-400 text-center">Spotify login failed: {authError}</span>}
+                <span className="text-xs text-yellow-300 text-center">
+                  Please log in with Spotify to access playback controls.
+                </span>
+                <button
+                  onClick={() => {
+                    window.location.href = 'http://localhost:8080/api/auth/spotify/login';
+                  }}
+                  className="px-3 py-1 bg-[#c0c0c0] text-black text-xs font-bold win-border-outset hover:bg-[#d4d4d4] active:win-border-inset cursor-pointer"
+                >
+                  🔑 Log In with Spotify
+                </button>
+              </div>
+            ) : (
+              /* VIEW 2: LOGGED IN & ACTIVE */
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between text-xs border-b border-green-900 pb-1">
+                  <span className="text-green-400 font-bold">STATUS: AUTHENTICATED</span>
+                  <span className="animate-pulse text-green-500">● ONLINE</span>
+                </div>
+
+                <div className="bg-gray-900 p-2 text-xs text-center border border-green-900 my-1">
+                  🎵 Active Player Ready
+                </div>
+
+                {/* PLAYBACK CONTROL BUTTONS */}
+                <div className="flex justify-between items-center bg-gray-900 p-2 win-border-inset">
+                  <button
+                    onClick={() => handlePlaybackCommand('previous')}
+                    className="px-2 py-1 bg-[#c0c0c0] text-black text-xs font-bold win-border-outset active:win-border-inset cursor-pointer"
+                  >
+                    ⏮ Prev
+                  </button>
+                  <button
+                    onClick={() => handlePlaybackCommand('play')}
+                    className="px-2 py-1 bg-[#c0c0c0] text-black text-xs font-bold win-border-outset active:win-border-inset cursor-pointer"
+                  >
+                    ▶ Play
+                  </button>
+                  <button
+                    onClick={() => handlePlaybackCommand('pause')}
+                    className="px-2 py-1 bg-[#c0c0c0] text-black text-xs font-bold win-border-outset active:win-border-inset cursor-pointer"
+                  >
+                    ⏸ Pause
+                  </button>
+                  <button
+                    onClick={() => handlePlaybackCommand('next')}
+                    className="px-2 py-1 bg-[#c0c0c0] text-black text-xs font-bold win-border-outset active:win-border-inset cursor-pointer"
+                  >
+                    ⏭ Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </Window>
       </div>
 
-
+      {/* START MENU */}
       {startOpen && (
         <div
           className="absolute bottom-7 left-0 w-52 bg-[#c0c0c0] win-border-outset z-50 flex shadow-lg"
@@ -245,7 +330,7 @@ export default function App() {
           {openWindows.spotify && (
             <button
               onClick={() => focusWindow('spotify')}
-              className="px-2 py-0.5 text-xs bg-[#c0c0c0] win-border-inset flex items-center gap-1 w-28 truncate"
+              className="px-2 py-0.5 text-xs bg-[#c0c0c0] win-border-inset flex items-center gap-1 w-28 truncate cursor-pointer"
             >
               <img src={spotifyIcon} alt="" className="w-3.5 h-3.5 object-contain image-render-pixelated" />
               Spotify 98
@@ -254,7 +339,7 @@ export default function App() {
           {openWindows.computer && (
             <button
               onClick={() => focusWindow('computer')}
-              className="px-2 py-0.5 text-xs bg-[#c0c0c0] win-border-inset flex items-center gap-1 w-28 truncate"
+              className="px-2 py-0.5 text-xs bg-[#c0c0c0] win-border-inset flex items-center gap-1 w-28 truncate cursor-pointer"
             >
               <img src={computerIcon} alt="" className="w-3.5 h-3.5 object-contain image-render-pixelated" />
               My Computer
