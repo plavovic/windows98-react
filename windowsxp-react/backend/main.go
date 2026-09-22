@@ -103,6 +103,8 @@ func main() {
 		c.Redirect(http.StatusFound, fullAuthURL)
 	})
 
+
+	
 	r.GET("/api/auth/spotify/callback", func(c *gin.Context) {
 		if authError := c.Query("error"); authError != "" {
 			redirectURL := spotify.FrontendURL + "?spotify_error=" + url.QueryEscape(authError)
