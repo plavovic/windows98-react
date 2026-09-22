@@ -61,7 +61,7 @@ export default function App() {
 
   // Fetch Desktop Icons from Go Backend
   useEffect(() => {
-    fetch('http://localhost:8080/api/desktop/icons')
+    fetch('http://localhost:8081/api/desktop/icons')
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch desktop icons');
         return res.json();
@@ -76,19 +76,20 @@ export default function App() {
       });
   }, []);
 
-  // Check URL for the OAuth result after Spotify redirects back.
+  // Check URL for OAuth result (supports both ? query params and # hash fragments)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
-    const token = hashParams.get('access_token');
+
+    // Try reading token from query params first, then fallback to hash params
+    const token = urlParams.get('access_token') || hashParams.get('access_token');
     const error = urlParams.get('spotify_error');
     const errorDescription = urlParams.get('spotify_error_description');
 
     if (token) {
       setAccessToken(token);
-      // Automatically open Spotify window on successful login
       setOpenWindows((prev) => ({ ...prev, spotify: true }));
-      // Clean up the URL token from the browser bar
+      // Clean up URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (error) {
       setAuthError(errorDescription || error);
@@ -112,7 +113,6 @@ export default function App() {
     setWindowZIndices((prev) => ({ ...prev, [id]: nextZ }));
   };
 
-  // Helper function to call Spotify Web API player endpoints
   const handlePlaybackCommand = (command: 'play' | 'pause' | 'next' | 'previous') => {
     if (!accessToken) return;
 
@@ -222,7 +222,6 @@ export default function App() {
             </div>
 
             {!accessToken ? (
-              /* VIEW 1: NOT LOGGED IN */
               <div className="flex flex-col items-center gap-3 py-2">
                 {authError && <span className="text-xs text-red-400 text-center">Spotify login failed: {authError}</span>}
                 <span className="text-xs text-yellow-300 text-center">
@@ -230,7 +229,7 @@ export default function App() {
                 </span>
                 <button
                   onClick={() => {
-                    window.location.href = 'http://localhost:8080/api/auth/spotify/login';
+                    window.location.href = 'http://127.0.0.1:8081/api/auth/spotify/login';
                   }}
                   className="px-3 py-1 bg-[#c0c0c0] text-black text-xs font-bold win-border-outset hover:bg-[#d4d4d4] active:win-border-inset cursor-pointer"
                 >
@@ -238,7 +237,6 @@ export default function App() {
                 </button>
               </div>
             ) : (
-              /* VIEW 2: LOGGED IN & ACTIVE */
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between text-xs border-b border-green-900 pb-1">
                   <span className="text-green-400 font-bold">STATUS: AUTHENTICATED</span>
@@ -249,7 +247,6 @@ export default function App() {
                   🎵 Active Player Ready
                 </div>
 
-                {/* PLAYBACK CONTROL BUTTONS */}
                 <div className="flex justify-between items-center bg-gray-900 p-2 win-border-inset">
                   <button
                     onClick={() => handlePlaybackCommand('previous')}

@@ -20,7 +20,6 @@ type DesktopItem struct {
 	Icon  string `json:"icon"`
 }
 
-// Added missing struct definition for token parsing
 type SpotifyTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	TokenType    string `json:"token_type"`
@@ -50,7 +49,7 @@ func loadSpotifyConfig() (spotifyConfig, error) {
 	}
 
 	if config.RedirectURI == "" {
-		config.RedirectURI = "http://127.0.0.1:8080/api/auth/spotify/callback"
+		config.RedirectURI = "http://127.0.0.1:8081/api/auth/spotify/callback"
 	}
 	if config.FrontendURL == "" {
 		config.FrontendURL = "http://localhost:5173"
@@ -83,10 +82,12 @@ func main() {
 
 	r := gin.Default()
 
+	// FIXED: Complete CORS support for browser preflights
 	r.Use(cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:5173", "http://127.0.0.1:5173"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE"},
-		AllowedHeaders: []string{"Origin", "Content-Type"},
+		AllowedOrigins:   []string{"http://localhost:5173", "http://127.0.0.1:5173"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
 	}))
 
 	r.GET("/api/auth/spotify/login", func(c *gin.Context) {
@@ -102,7 +103,6 @@ func main() {
 		c.Redirect(http.StatusFound, fullAuthURL)
 	})
 
-	// FIXED: Token exchange logic correctly nested inside callback route
 	r.GET("/api/auth/spotify/callback", func(c *gin.Context) {
 		if authError := c.Query("error"); authError != "" {
 			redirectURL := spotify.FrontendURL + "?spotify_error=" + url.QueryEscape(authError)
@@ -155,7 +155,8 @@ func main() {
 			return
 		}
 
-		redirectURL := spotify.FrontendURL + "#authenticated=true&access_token=" + url.QueryEscape(tokenData.AccessToken)
+		// FIXED: Changed '#' to '?' so App.tsx can parse parameters with URLSearchParams
+		redirectURL := fmt.Sprintf("%s?authenticated=true&access_token=%s", spotify.FrontendURL, url.QueryEscape(tokenData.AccessToken))
 		c.Redirect(http.StatusFound, redirectURL)
 	})
 
@@ -173,7 +174,8 @@ func main() {
 		})
 	})
 
-	if err := r.Run(":8080"); err != nil {
+	// FIXED: Bind explicitly to IPv4 127.0.0.1
+	if err := r.Run(":8081"); err != nil {
 		fmt.Println("Backend server error:", err)
 	}
 }

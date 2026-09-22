@@ -4,7 +4,7 @@
 
 1. In the Spotify Developer Dashboard, add this exact redirect URI to the app:
 
-  `http://127.0.0.1:8080/api/auth/spotify/callback`
+  `http://127.0.0.1:8081/api/auth/spotify/callback`
 
 2. Copy `backend/.env.example` to `backend/.env`, replace the two placeholder credentials, and start the backend:
 
